@@ -1,0 +1,30 @@
+; For the full information and tips, see readme.md
+
+[Core]
+; The directory containing photos. If empty, script uses the current directory.
+; If command line argument is given, it overrides this setting.
+photoDir = ""
+
+; Finding duplicates based on visual content (ignores all metadata). Slow but accurate.
+imageHashMode = false
+
+; [optional] File extensions to process (comma-separated). Use "" for all files. Case insensitive.
+; If left empty, check all ExifTool supported files
+extensions = "jpg,jpeg,cr2,nef,mrw,tif,tiff"
+
+[Exif]
+; Specific tags to extract from files (comma-separated).
+fetchTags = "DateTimeOriginal,SubSecTime"
+
+; [optional] Pattern used to determine duplicates. Format: same as fetchTags
+; If left empty, it will be automatically generated from fetchTags.
+compareTags =
+
+; Additional raw parameters passed directly to exiftool.
+exifToolParameters = "-m"
+
+[UI]
+; Exiftool verbosity: 0 = Silent, 1 = Errors, 2 = Full ExifTool output.
+displayOutput = 2
+; Enable ANSI colors in terminal.
+enableColorOutput = true
