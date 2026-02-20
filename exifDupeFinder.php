@@ -1,9 +1,14 @@
 <?php
     
     /**
-        * Note: The cache file contains metadata and paths/filenames of your photos. 
-        * If you are on a shared system, remember to delete it manually after use. 
-        * For more info see readme.md
+        * ExifDupeFinder
+        * Finds duplicate photos based on Exif metadata or image content.
+        * http://github.com/Krzysiu/exifDupeFinder
+        * <3 https://buymeacoffee.com/krzysiunet <3
+        *
+        * @author Krzysiu
+        * @version 0.0.2
+        * @link http://github.com/Krzysiu/exifDupeFinder
     */
     
     $scriptDir = __DIR__ . DIRECTORY_SEPARATOR;
@@ -34,6 +39,9 @@
     }
     
     $useColor = filter_var($config['enableColorOutput'], FILTER_VALIDATE_BOOLEAN);
+    $prettyPrint = filter_var($config['prettyPrint'], FILTER_VALIDATE_BOOLEAN);
+    if (!$prettyPrint) $displayLevel = 0;
+    
     $red    = $useColor ? "\033[1;31m" : "";
     $cyan   = $useColor ? "\033[0;36m" : "";
     $white  = $useColor ? "\033[1;37m" : "";
@@ -62,9 +70,10 @@
     }
     
     if (!file_exists($cacheFile)) {
-        echo "{$white}Comparing files in {$red}{$cleanPhotoDir}{$reset}" . PHP_EOL;
-        echo "{$white}Fetching {$red}{$fetchTags}{$white}...{$reset}" . PHP_EOL;
-        
+        if ($prettyPrint) {
+            echo "{$white}Comparing files in {$red}{$cleanPhotoDir}{$reset}" . PHP_EOL;
+            echo "{$white}Fetching {$red}{$fetchTags}{$white}...{$reset}" . PHP_EOL;
+        }    
         $cmdPart = parseParamString($fetchTags, "-");
         $extPart = parseParamString($config['extensions'], "-ext ");
         
@@ -76,7 +85,7 @@
         escapeshellarg($cleanPhotoDir)
         );
         
-        echo PHP_EOL . "{$white}Running: {$red}$cmd{$reset}" . PHP_EOL;
+        if ($prettyPrint) echo PHP_EOL . "{$white}Running: {$red}$cmd{$reset}" . PHP_EOL;
         
         $displayLevel = (int)($config['displayOutput'] ?? 0);
         $isWin = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
@@ -94,18 +103,21 @@
         
         passthru($cmd . $redirect);
         
+        
         if ($displayLevel > 0) {
             echo PHP_EOL . "{$green}--END OF THE EXIFTOOL OUTPUT--{$reset}" . PHP_EOL . PHP_EOL;
         }
-        } else {
+        } elseif ($prettyPrint) {
         echo "{$white}Comparing files in {$red}{$cleanPhotoDir}{$reset}" . PHP_EOL;
         echo "{$white}Loading data from cache: {$red}{$cacheFile}{$reset}" . PHP_EOL;
     }
     
-    if (filter_var($config['imageHashMode'], FILTER_VALIDATE_BOOLEAN)) {
-        echo "{$green}Using {$red}image hash comparison{$green} mode{$reset}" . PHP_EOL . PHP_EOL;
-        } else {
-        echo "{$green}Result using \"{$red}" . implode(',', $compareTagsArray) . "{$green}\" tags:{$reset}" . PHP_EOL . PHP_EOL;
+    if ($prettyPrint) {
+        if (filter_var($config['imageHashMode'], FILTER_VALIDATE_BOOLEAN)) {
+            echo "{$green}Using {$red}image hash comparison{$green} mode{$reset}" . PHP_EOL . PHP_EOL;
+            } else {
+            echo "{$green}Result using \"{$red}" . implode(',', $compareTagsArray) . "{$green}\" tags:{$reset}" . PHP_EOL . PHP_EOL;
+        }
     }
     
     $groups = [];
@@ -143,49 +155,58 @@
         if (count($files) > 1) {
             $found = true;
             $totalDuplicates += (count($files) - 1);
-            echo "{$white}Group #{$red}$i{$white}:{$reset}" . PHP_EOL;
+            
+            if ($prettyPrint) echo "{$white}Group #{$red}$i{$white}:{$reset}" . PHP_EOL;
             
             $originalSize = 0;
             foreach ($files as $index => $file) {
-                // Determine file path (handle absolute vs relative from CSV)
                 $fullPath = (file_exists($file)) ? $file : $cleanPhotoDir . DIRECTORY_SEPARATOR . basename($file);
                 $fileSize = file_exists($fullPath) ? filesize($fullPath) : 0;
                 
-                echo "{$white}* {$cyan}$file {$white}({$red}" . humanSize($fileSize) . "{$white})";
-                
+                $delta = 0;
                 if ($index === 0) {
                     $originalSize = $fileSize;
-                    echo " {$white}assumed original";
                     } else {
                     $totalWastedSpace += $fileSize;
-                    if ($fileSize === $originalSize) {
-                        echo " {$white}same size";
-                        } elseif ($fileSize < $originalSize) {
-                        $diff = $originalSize - $fileSize;
-                        echo " {$white}smaller: {$green}-" . humanSize($diff);
-                        } else {
-                        $diff = $fileSize - $originalSize;
-                        echo " {$white}larger: {$red}+" . humanSize($diff);
-                    }
+                    $delta = $fileSize - $originalSize;
                 }
-                echo "{$reset}" . PHP_EOL;
+                
+                if ($prettyPrint) {
+                    echo "{$white}* {$cyan}$file {$white}({$red}" . humanSize($fileSize) . "{$white})";
+                    
+                    if ($index === 0) {
+                        echo " {$white}assumed original";
+                        } else {
+                        if ($fileSize === $originalSize) {
+                            echo " {$white}same size";
+                            } elseif ($fileSize < $originalSize) {
+                            echo " {$white}smaller: {$green}-" . humanSize(abs($delta));
+                            } else {
+                            echo " {$white}larger: {$red}+" . humanSize($delta);
+                        }
+                    }
+                    echo "{$reset}" . PHP_EOL;
+                    } else {
+                    echo "{$i},\"{$file}\",{$delta}" . PHP_EOL;
+                }
             }
-            echo PHP_EOL;
+            
+            if ($prettyPrint) echo PHP_EOL;
             $i++;
         }
     }
-    
-    if ($found) {
-        $groupCount = $i - 1;
-        echo "{$red}{$totalDuplicates}{$white} duplicates found in {$red}{$groupCount}{$white} groups.{$reset}" . PHP_EOL;
-        echo "{$white}Space wasted by duplicates: {$red}" . humanSize($totalWastedSpace) . "{$reset}" . PHP_EOL;
-        } else {
-        echo "{$white}No duplicates found based on the current criteria.{$reset}" . PHP_EOL;
+    if ($prettyPrint) {
+        if ($found) {
+            $groupCount = $i - 1;
+            echo "{$red}{$totalDuplicates}{$white} duplicates found in {$red}{$groupCount}{$white} groups.{$reset}" . PHP_EOL;
+            echo "{$white}Space wasted by duplicates: {$red}" . humanSize($totalWastedSpace) . "{$reset}" . PHP_EOL;
+            } else {
+            echo "{$white}No duplicates found based on the current criteria.{$reset}" . PHP_EOL;
+        }
     }
-    
     function humanSize($size, $format = [2]) {
         if ($size <= 0) return "0 B";
         $units = ['B', 'kB', 'MB', 'GB', 'TB'];
         $i = floor(log($size, 1024));
         return number_format($size / pow(1024, $i), ...$format) . ' ' . $units[$i];
-    }                
+    }            

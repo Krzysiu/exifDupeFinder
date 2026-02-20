@@ -6,7 +6,8 @@
 photoDir = ""
 
 ; Finding duplicates based on visual content (ignores all metadata). Slow but accurate.
-imageHashMode = false
+; It overrides fetchTags and compareTags.
+imageHashMode = 0
 
 ; [optional] File extensions to process (comma-separated). Use "" for all files. Case insensitive.
 ; If left empty, check all ExifTool supported files
@@ -18,13 +19,17 @@ fetchTags = "DateTimeOriginal,SubSecTime"
 
 ; [optional] Pattern used to determine duplicates. Format: same as fetchTags
 ; If left empty, it will be automatically generated from fetchTags.
-compareTags =
+compareTags = ""
 
-; Additional raw parameters passed directly to exiftool.
+; Additional Exiftool parameters (see https://exiftool.org/exiftool_pod.html)
+; Remember that formatting parameters won't change what you see, but can cause
+; this script to fail to understand ExifTool.
 exifToolParameters = "-m"
 
 [UI]
-; Exiftool verbosity: 0 = Silent, 1 = Errors, 2 = Full ExifTool output.
+; Detail level for ExifTool: 0 = Silent, 1 = Errors, 2 = Full.
 displayOutput = 2
-; Enable ANSI colors in terminal.
-enableColorOutput = true
+; Use colors on the screen: 0 = off, 1 = on.
+enableColorOutput = 1
+; 0 = CSV format for machines, 1 = pretty ouput for humans; 
+prettyPrint = 1
